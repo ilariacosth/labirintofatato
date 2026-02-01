@@ -11,7 +11,7 @@
     * Caricare la struttura dei muri dei livelli (mappe.xml).
     * Salvare e caricare lo stato della partita (livello, punteggio, sconfitte) tramite parsing del DOM.
 
-## 🕹️ Comandi
+## Comandi
 
 * **Fata (Lily):** Frecce direzionali (muoviti per raccogliere le stelle).
 * **Strega Bianca:** W - A - S - D (usala per proteggere la fata e respingere la Strega Nera).
