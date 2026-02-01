@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE PARTITA [
+    <!ELEMENT PARTITA (DATI)>
+    <!ELEMENT DATI (livello, punteggio, sconfitte, strega_nera_respinta, strega_bianca_sbloccata)>
+    <!ELEMENT livello (#PCDATA)>
+    <!ELEMENT punteggio (#PCDATA)>
+    <!ELEMENT sconfitte (#PCDATA)>
+    <!ELEMENT strega_nera_respinta (#PCDATA)>
+    <!ELEMENT strega_bianca_sbloccata (#PCDATA)>
+]>
+<PARTITA>
+  <DATI>
+    <livello>3</livello>
+    <punteggio>350</punteggio>
+    <sconfitte>3</sconfitte>
+    <strega_nera_respinta>11</strega_nera_respinta>
+    <strega_bianca_sbloccata>true</strega_bianca_sbloccata>
+  </DATI>
+</PARTITA>

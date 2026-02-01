@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Il Labirinto Fatato</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Verdana', sans-serif;
+            font-family: 'Press Start 2P', cursive;
+            text-align: center;
+            margin: 0;
+            color: #f3e5f5;
+            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
+                        url('https://i.pinimg.com/736x/2e/ee/3c/2eee3cb989ecc25ec4920eb7e6ef6e29.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            font-size: 10px; line-height: 1.5;
+        }
+
+        h1 { color: #e1bee7; text-shadow: 3px 3px 0px #4a148c; margin-top: 20px; font-size: 20px; }
+
+        #griglia { /* Tabella del labirinto */
+            border-collapse: collapse;
+            border: 4px solid #7b1fa2;
+            background-color: white;   
+            box-shadow: 0 0 20px rgba(123, 31, 162, 0.8);
+        }
+
+        #griglia td { /* Celle del labirinto */
+            width: 40px;  
+            height: 40px;
+            padding: 0;
+            border: 1px dotted #9c27b0;
+        }
+
+        #griglia img { /* Immagini dei personaggi e stelle */
+            width: 35px; 
+            height: 35px; 
+            object-fit: cover; 
+        }
+
+        .muro-pieno { /* Celle che sono muri */
+            background-color: #255338 !important;
+            border: 1px solid #000 !important;
+        }
+
+        #pannello, #pannello-storia, #pannello-avviso, #pannello-comandi {
+            border: 4px solid #7b1fa2; background-color: rgba(0, 0, 0, 0.9);
+            padding: 15px; width: 320px; color: white; margin: 0 auto;
+            image-rendering: pixelated; 
+        }
+        
+        #pannello-storia, #pannello-avviso, #pannello-comandi { color: #e1bee7; font-size: 10px; text-align: center; }
+
+        button {
+            font-family: 'Press Start 2P', cursive; padding: 12px 10px; font-size: 10px;
+            background-color: #4a148c; color: white; border: 2px solid #ce93d8;
+            cursor: pointer; margin: 8px 0; width: 100%; text-transform: uppercase;
+            box-shadow: 3px 3px 0px #222; 
+        }
+
+        button:hover { 
+            background-color: #7b1fa2; 
+            transform: translate(2px, 2px); 
+            box-shadow: 1px 1px 0px #222; 
+        }
+
+        .btn-storia { background-color: #880e4f; border-color: #f48fb1; }
+        .btn-storia:hover { background-color: #ad1457; }
+        .btn-carica { background-color: #00695c; border-color: #80cbc4; } 
+        .btn-pausa-attiva { background-color: #c62828 !important; border-color: #ef9a9a !important; }
+
+        #messaggio { /* Messaggio di stato del gioco */
+            color: #ff4081; 
+            font-size: 12px; 
+            margin: 5px 0 15px 0; 
+            text-shadow: 2px 2px 0px black; 
+            text-transform: uppercase; 
+        }
+
+        #boxPunteggio { 
+            color: #ffd700; 
+            font-size: 12px; 
+            margin: 0 0 15px 0; 
+            text-shadow: 2px 2px 0px black; 
+            text-transform: uppercase; 
+            display: none; 
+        }
+
+        #punti {
+            color: #fff176; 
+            font-size: 14px; 
+            text-shadow: 2px 2px 0px black;
+            border-bottom: 2px solid #7b1fa2; 
+            display: none; 
+            padding-bottom: 8px; margin-bottom: 15px;
+        }
+        
+        input[type="text"] { 
+            width: 90%; 
+            padding: 8px; 
+            margin-top: 5px; 
+            background-color: #f3e5f5; 
+            border: 2px solid #7b1fa2; 
+            font-family: 'Courier New', monospace; 
+            font-size: 11px; 
+            font-weight: bold; 
+            color: #4a148c; 
+        }
+
+        input[type="file"] { /* Per il caricamento file mappe */
+            margin-top: 10px; 
+            color: #e1bee7;
+            font-family: 'Verdana', sans-serif; 
+            font-size: 10px; 
+            width: 100%; 
+        }
+        
+        .nascosto { display: none; } /* Classe per nascondere elementi */
+
+        .label-istruzioni { /* Stile per le etichette delle istruzioni */
+            font-size: 8px; 
+            color: #e1bee7; 
+            display: block; 
+            margin-top: 5px; 
+            text-align: left; 
+            text-transform: uppercase; 
+        }
+        
+        #layout-table { margin: 0 auto; border-spacing: 20px; } /* Tabella di layout principale */
+    </style>
+
+    <script>
+        var RIGHE = 15;
+        var COLONNE = 15;
+        
+        var imgFata = "https://i.pinimg.com/736x/24/2d/e1/242de1d4e014dd206c0cfc1e5a24cc38.jpg"; 
+        var imgStregaB = "https://i.pinimg.com/736x/e0/8e/1c/e08e1c79cea1be35934e86652e4f92af.jpg"; 
+        var imgStregaN = "https://i.pinimg.com/736x/cf/50/2c/cf502c5576844807600198a0405afe17.jpg";
+        var imgStella = "https://i.pinimg.com/736x/0c/f6/ad/0cf6ad625df30ecdf1223ea380a9aea0.jpg";
+
+        var mappaL1 = [];
+        var mappaL2 = [];
+        var mappaL3 = [];
+
+        var labirinto = [];
+        var giocoAttivo = false; // Indica se il gioco è in corso
+        var livelloCorrente = 1; // Livello attuale
+
+        var punteggio = 0;
+        var stelleTotali = 0;
+        var stelleRaccolte = 0;
+        var sconfitte = 0;
+
+        var rFata, cFata;
+        var rBianca, cBianca, sbloccata;
+        var rNera, cNera; 
+        var rNeraPrev, cNeraPrev;
+        var timerStrega = null; // Timer per il movimento della Strega Nera
+
+        var alertBiancaMostrato = false; 
+        var alertCombattimentoMostrato = false;
+        var contatoreRespinte = 0;
+        var stoCaricandoPartita = false;
+        var inPausa = false; // Indica se il gioco è in pausa
+        var velocitaCorrente = 500; // Velocità di movimento della Strega Nera  
+
+        function caricaMappeDaXML() { // Carica le mappe dal file XML selezionato
+            var input = document.getElementById("fileMappeInput");
+            if (!input.files[0]) { // Nessun file selezionato 
+                alert("Seleziona il file 'mappe.xml'!");
+                return;
+            }
+
+            var reader = new FileReader(); // Crea un oggetto FileReader
+            reader.onload = function(e) { // Quando il file è caricato 
+                var parser = new DOMParser();
+                var xmlDoc = parser.parseFromString(reader.result, "text/xml");
+                
+                var livelliXML = xmlDoc.getElementsByTagName("LIVELLO");
+
+                if (livelliXML.length === 0) {
+                    alert("Errore: Nessun livello trovato nel file XML.");
+                    return;
+                }
+
+                for (var i = 0; i < livelliXML.length; i++) { // Per ogni livello
+                    var livelloNodo = livelliXML[i];
+                    var idLivello = parseInt(livelloNodo.getAttribute("id")); // Ottiene l'id del livello
+                    
+                    var righeXML = livelloNodo.getElementsByTagName("RIGA"); // Ottiene le righe della mappa
+                    var nuovaMappa = [];
+
+                    for (var j = 0; j < righeXML.length; j++) { // Per ogni riga
+                        var stringaRiga = righeXML[j].childNodes[0].nodeValue;
+                        var arrayRiga = stringaRiga.split(",").map(Number); 
+                        nuovaMappa.push(arrayRiga);
+                    }
+
+                    if (idLivello === 1) mappaL1 = nuovaMappa;
+                    if (idLivello === 2) mappaL2 = nuovaMappa;
+                    if (idLivello === 3) mappaL3 = nuovaMappa;
+                }
+
+                alert("MAPPE CARICATE CORRETTAMENTE!\nORA PUOI INIZIARE LA PARTITA."); // Notifica di successo
+                
+                document.getElementById("boxCaricamentoMappe").style.display = 'none'; // Nasconde il box di caricamento mappe
+                document.getElementById("btnNuovaPartita").style.display = 'block'; // Mostra il pulsante Nuova Partita
+
+                document.getElementById("boxCaricamentoDati").style.display = 'block'; // Mostra il box di caricamento dati 
+            };
+            reader.readAsText(input.files[0]); // Legge il file come testo
+        }
+
+        function disegna() { // Disegna il labirinto nella tabella HTML
+            var html = "";
+            for(var i=0; i<RIGHE; i++) {
+                html += "<tr>";
+                for(var j=0; j<COLONNE; j++) {
+                    var cella = labirinto[i][j];
+                    var classe = "";
+                    if(cella.muro) classe = "muro-pieno";
+
+                    var contenuto = "";
+                    if(!cella.muro) { // Se non è un muro e quindi è uno spazio libero
+                        if(cella.stella) contenuto = "<img src='" + imgStella + "'>";
+                        if(i==rBianca && j==cBianca) contenuto = "<img src='" + imgStregaB + "'>";
+                        if(i==rNera && j==cNera) contenuto = "<img src='" + imgStregaN + "'>";
+                        if(i==rFata && j==cFata) contenuto = "<img src='" + imgFata + "'>";
+                    }
+                    html += "<td class='" + classe + "'>" + contenuto + "</td>";
+                }
+                html += "</tr>"; 
+            }
+            document.getElementById("griglia").innerHTML = html; // Aggiorna la tabella HTML
+            document.getElementById("valStelle").innerHTML = stelleRaccolte + "/" + stelleTotali; // Aggiorna il contatore stelle
+        }
+
+        function aggiornaPannelloInfo() { // Aggiorna il pannello informazioni sulla Strega Bianca e Nera
+            var info = document.getElementById("infoAiuto");
+            if (!sbloccata) { info.style.display = "none"; return; } 
+            info.style.display = "block";
+            info.style.color = "#b9f6ca"; 
+            var testo = "STREGA BIANCA: ATTIVA (W-A-S-D)";
+            if(contatoreRespinte > 0) testo += "<br><br>STREGA NERA: RESPINTA x " + contatoreRespinte;
+            info.innerHTML = testo;
+        }
+
+        function iniziaPartita(livelloScelto) { // Inizia una nuova partita o carica una partita salvata
+            if (mappaL1.length === 0) {
+                alert("ATTENZIONE:\n Devi prima caricare il file 'mappe.xml'!");
+                return;
+            }
+
+            giocoAttivo = true;
+            
+            // GESTIONE INTERFACCIA
+            // Mostra il pulsante Pausa
+            var btnPausa = document.getElementById("btnPausa");
+            btnPausa.style.display = "block";
+            btnPausa.innerHTML = "PAUSA";
+            btnPausa.className = "";
+            
+            // Mostra l'area di salvataggio dati
+            document.getElementById("areaSalvataggio").style.display = "block";
+            
+            // Nasconde l'area di caricamento dati
+            document.getElementById("boxCaricamentoDati").style.display = "none";
+            
+            // MOSTRA I PUNTEGGI QUANDO CHE IL GIOCO INIZIA
+            document.getElementById("punti").style.display = "inline-block";
+            document.getElementById("boxPunteggio").style.display = "block";
+            
+            inPausa = false;
+
+            if(timerStrega != null) clearInterval(timerStrega);
+
+            if (livelloScelto) { // Caricamento partita salvata
+                livelloCorrente = livelloScelto;
+            } else {
+                if (!stoCaricandoPartita) {
+                    livelloCorrente = 1;
+                    punteggio = 0;
+                    sconfitte = 0;
+                    sbloccata = false; 
+                    contatoreRespinte = 0;
+                    alertBiancaMostrato = false;
+                    alertCombattimentoMostrato = false;
+                }
+            }
+            
+            if (!stoCaricandoPartita && livelloScelto == undefined) { // Nuova partita
+                sbloccata = false; 
+            }
+
+            stoCaricandoPartita = false;
+            stelleRaccolte = 0;
+            stelleTotali = 0;
+            
+            document.getElementById("valStelle").innerHTML = "0/0";
+            document.getElementById("messaggio").innerHTML = "LIVELLO " + livelloCorrente + "";
+            document.getElementById("boxPunteggio").innerHTML = "PUNTI: " + punteggio;
+            document.getElementById("txtXML").value = ""; 
+            
+            aggiornaPannelloInfo(); // Aggiorna il pannello informazioni
+
+            rFata = 0; cFata = 0; 
+            rBianca = 7; cBianca = 7;
+            rNera = 14; cNera = 14;
+
+            var mappaCorrente;
+            if (livelloCorrente == 1) mappaCorrente = mappaL1;
+            else if (livelloCorrente == 2) mappaCorrente = mappaL2;
+            else mappaCorrente = mappaL3;
+
+            rNeraPrev = rNera; cNeraPrev = cNera; // Posizione precedente Strega Nera 
+
+            labirinto = []; // Inizializza il labirinto vuoto
+            for(var i=0; i<RIGHE; i++) { // Costruisce il labirinto basato sulla mappa corrente
+                var riga = [];
+                for(var j=0; j<COLONNE; j++) {
+                    var cella = {};
+                    if (mappaCorrente[i][j] == 1) {
+                        cella.muro = true;
+                        cella.stella = false;
+                    } 
+                    else {
+                        cella.muro = false; 
+                        var haStella = (Math.random() > 0.75); // 25% di probabilità di avere una stella
+                        if( (i==0 && j==0) || (i==rNera && j==cNera) || (i==rBianca && j==cBianca) ) {
+                            haStella = false;
+                        }
+                        cella.stella = haStella;
+                        if(haStella) stelleTotali++;
+                    }
+                    riga.push(cella);
+                }
+                labirinto.push(riga);
+            }
+
+            disegna(); // Disegna il labirinto iniziale
+
+            var velocita = 500; 
+            if(livelloCorrente == 2) velocita = 300; 
+            if(livelloCorrente == 3) velocita = 150;  
+            velocitaCorrente = velocita;
+
+            timerStrega = setInterval(function() {
+                if(giocoAttivo) {
+                    muoviStregaNera();
+                }
+            }, velocita);
+        }
+
+        function muroPresente(r, c) { // Controlla se c'è un muro nella cella specificata
+            if (r < 0 || r >= RIGHE || c < 0 || c >= COLONNE) return true;
+            return labirinto[r][c].muro;
+        }
+
+        function muoviStregaNera() { // Muove la Strega Nera in modo casuale evitando di tornare indietro
+            var mosse = [ { dr: -1, dc: 0 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 } ];
+            var mosseValide = [];
+            for (var i = 0; i < mosse.length; i++) { // Controlla ogni mossa possibile
+                var nr = rNera + mosse[i].dr;
+                var nc = cNera + mosse[i].dc;
+                if (!muroPresente(nr, nc)) mosseValide.push({ r: nr, c: nc });
+            }
+
+            var mosseSenzaRitorno = []; 
+            for (var i = 0; i < mosseValide.length; i++) { // Filtra le mosse che non tornano indietro
+                var m = mosseValide[i]; 
+                if (m.r != rNeraPrev || m.c != cNeraPrev) mosseSenzaRitorno.push(m);
+            }
+
+            var mossaFinale;
+            if (mosseSenzaRitorno.length > 0) { // Sceglie una mossa a caso tra quelle senza ritorno
+                var indiceRandom = Math.floor(Math.random() * mosseSenzaRitorno.length);
+                mossaFinale = mosseSenzaRitorno[indiceRandom];
+            } 
+            else if (mosseValide.length > 0) {
+                mossaFinale = mosseValide[0];
+            } 
+            else { return; }
+
+            rNeraPrev = rNera; cNeraPrev = cNera; // Aggiorna la posizione precedente
+            rNera = mossaFinale.r; cNera = mossaFinale.c; // Muove la Strega Nera
+            controllaCoordinate(); // Controlla le coordinate dopo il movimento
+            disegna(); // Ridisegna il labirinto
+        }
+
+        function muoviFata(dr, dc) { // Muove la Fata in base alla direzione specificata
+            if(!giocoAttivo) return;
+            var nr = rFata + dr;
+            var nc = cFata + dc;
+            if(!muroPresente(nr, nc)) {
+                rFata = nr; cFata = nc;
+                controllaCoordinate(); 
+                disegna();
+            }
+        }
+
+        function muoviStregaBianca(dr, dc) { // Muove la Strega Bianca in base alla direzione specificata  
+            if(!giocoAttivo || !sbloccata) return;
+            var nr = rBianca + dr;
+            var nc = cBianca + dc;
+            if(!muroPresente(nr, nc)) {
+                rBianca = nr; cBianca = nc;
+                controllaCoordinate();
+                disegna();
+            }
+        }
+
+        function controllaCoordinate() { // Controlla le coordinate dei personaggi e aggiorna lo stato del gioco
+            if(labirinto[rFata][cFata].stella) { // La Fata raccoglie una stella
+                punteggio += 10;
+                stelleRaccolte++;
+                labirinto[rFata][cFata].stella = false;
+                document.getElementById("boxPunteggio").innerHTML = "PUNTI: " + punteggio;
+            }
+            if(rFata == rBianca && cFata == cBianca && !sbloccata) { // La Fata sblocca la Strega Bianca
+                sbloccata = true;
+                aggiornaPannelloInfo();
+                if (!alertBiancaMostrato) { alert("HAI TROVATO LA STREGA BIANCA! MUOVILA CON W-A-S-D."); alertBiancaMostrato = true; }
+            }
+            if(stelleRaccolte == stelleTotali) { // Tutte le stelle raccolte: livello completato
+                clearInterval(timerStrega); 
+                if(livelloCorrente < 3) { // Passa al livello successivo
+                    alert("LIVELLO " + livelloCorrente + " COMPLETATO!");
+                    stoCaricandoPartita = true; 
+                    livelloCorrente++;
+                    sbloccata = false; 
+                    contatoreRespinte = 0;
+                    alertBiancaMostrato = false;
+                    alertCombattimentoMostrato = false;
+                    iniziaPartita(livelloCorrente);
+                } 
+                else { // Vittoria finale
+                    document.getElementById("messaggio").innerHTML = "VITTORIA!";
+                    alert("COMPLIMENTI! HAI VINTO IL GIOCO!");
+                    giocoAttivo = false;
+                    document.getElementById("boxCaricamentoDati").style.display = "block";
+                }
+                return;
+            }
+
+            if(rBianca == rNera && cBianca == cNera && sbloccata) { // La Strega Bianca respinge la Strega Nera
+                rNera=14; cNera=14; 
+                rNeraPrev=14; cNeraPrev=14;
+                contatoreRespinte++;
+                aggiornaPannelloInfo();
+                if (!alertCombattimentoMostrato) { alert("LA STREGA NERA È STATA RESPINTA!"); alertCombattimentoMostrato = true; }
+            }
+            if(rFata == rNera && cFata == cNera) {
+                sconfitte++;
+                clearInterval(timerStrega); 
+                alert("GAME OVER!\nRICOMINCIA IL LIVELLO.");
+                stoCaricandoPartita = false; 
+                sbloccata = false; 
+                contatoreRespinte = 0;
+                alertBiancaMostrato = false;
+                alertCombattimentoMostrato = false;
+                
+                iniziaPartita(livelloCorrente); // Ricomincia il livello corrente
+            }
+        }
+
+        document.onkeydown = function(e) { // Gestione input da tastiera per muovere i personaggi
+            if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.key) > -1) e.preventDefault(); // Previene lo scroll della pagina
+            if(e.key == "ArrowUp") muoviFata(-1, 0);
+            if(e.key == "ArrowDown") muoviFata(1, 0);
+            if(e.key == "ArrowLeft") muoviFata(0, -1);
+            if(e.key == "ArrowRight") muoviFata(0, 1);
+            if(e.key == "w" || e.key == "W") muoviStregaBianca(-1, 0);
+            if(e.key == "s" || e.key == "S") muoviStregaBianca(1, 0);
+            if(e.key == "a" || e.key == "A") muoviStregaBianca(0, -1);
+            if(e.key == "d" || e.key == "D") muoviStregaBianca(0, 1);
+        }
+
+        function salvaDati() { // Salva i dati della partita corrente in formato XML
+            if(!giocoAttivo && punteggio == 0) { alert("Gioca prima!"); return; }
+            
+            var xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+            xml += '<!DOCTYPE PARTITA [\n';
+            xml += '    <!ELEMENT PARTITA (DATI)>\n';
+            xml += '    <!ELEMENT DATI (livello, punteggio, sconfitte, strega_nera_respinta, strega_bianca_sbloccata)>\n';
+            xml += '    <!ELEMENT livello (#PCDATA)>\n';
+            xml += '    <!ELEMENT punteggio (#PCDATA)>\n';
+            xml += '    <!ELEMENT sconfitte (#PCDATA)>\n';
+            xml += '    <!ELEMENT strega_nera_respinta (#PCDATA)>\n';
+            xml += '    <!ELEMENT strega_bianca_sbloccata (#PCDATA)>\n';
+            xml += ']>\n';
+            
+            xml += '<PARTITA>\n';
+            xml += '  <DATI>\n';
+            xml += '    <livello>' + livelloCorrente + '</livello>\n';
+            xml += '    <punteggio>' + punteggio + '</punteggio>\n';
+            xml += '    <sconfitte>' + sconfitte + '</sconfitte>\n';
+            xml += '    <strega_nera_respinta>' + contatoreRespinte + '</strega_nera_respinta>\n';
+            xml += '    <strega_bianca_sbloccata>' + sbloccata + '</strega_bianca_sbloccata>\n';
+            xml += '  </DATI>\n';
+            xml += '</PARTITA>';
+
+            var txtBox = document.getElementById("txtXML");
+            txtBox.value = xml;
+            txtBox.select();
+            alert("CODICE GENERATO!\nCOPIA E SALVA IL TUO FILE XML.");
+        }
+
+        function caricaDati() { // Carica i dati di una partita salvata da un file XML
+            if (mappaL1.length === 0) {
+                alert("Devi prima caricare il file 'mappe.xml'!");
+                return;
+            }
+            
+            if(giocoAttivo) {
+                alert("Non puoi caricare una partita mentre stai giocando!");
+                return;
+            }
+
+            var input = document.getElementById("fileInput");
+            if(!input.files[0]) { alert("Seleziona file .xml!"); return; }
+            
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var parser = new DOMParser();
+                var xmlDoc = parser.parseFromString(reader.result, "text/xml");
+                
+                var nodoDati = xmlDoc.getElementsByTagName("DATI")[0];
+                if (!nodoDati) { alert("Errore: Formato file non valido!"); return; }
+
+                function getVal(tag) {
+                    var elemento = nodoDati.getElementsByTagName(tag)[0];
+                    return elemento ? elemento.textContent : null;
+                }
+
+                var lvl = parseInt(getVal("livello"));
+                punteggio = parseInt(getVal("punteggio"));
+                sconfitte = parseInt(getVal("sconfitte"));
+                
+                var respintaStr = getVal("strega_nera_respinta");
+                contatoreRespinte = respintaStr ? parseInt(respintaStr) : 0;
+
+                var sbloccataStr = getVal("strega_bianca_sbloccata");
+                var sbloccataSalvata = (sbloccataStr === "true");
+
+                stoCaricandoPartita = true;
+                sbloccata = sbloccataSalvata; 
+
+                // Gestione visibilità: mostra il bottone nuova partita e nasconde il caricamento mappe
+                document.getElementById("btnNuovaPartita").style.display = 'block';
+                document.getElementById("boxCaricamentoMappe").style.display = 'none';
+
+                iniziaPartita(lvl); // Inizia la partita al livello salvato
+                
+                aggiornaPannelloInfo(); // Aggiorna il pannello informazioni
+                document.getElementById("boxPunteggio").innerHTML = "PUNTI: " + punteggio;
+
+                alert("DATI CARICATI CON SUCCESSO! LIVELLO: " + lvl);
+            };
+            reader.readAsText(input.files[0]); // Legge il file come testo
+        }
+
+        function gestisciPausa() { // Gestisce la pausa e ripresa del gioco 
+            if(!giocoAttivo) return;
+            var btn = document.getElementById("btnPausa");
+            if(!inPausa) {
+                inPausa = true;
+                clearInterval(timerStrega); 
+                btn.innerHTML = "RIPRENDI";
+                btn.className = "btn-pausa-attiva";
+                document.getElementById("messaggio").innerHTML = "GIOCO IN PAUSA";
+            } 
+            else {
+                inPausa = false;
+                timerStrega = setInterval(function() {
+                    if(giocoAttivo && !inPausa) muoviStregaNera();
+                }, velocitaCorrente);
+                btn.innerHTML = "PAUSA";
+                btn.className = "";
+                document.getElementById("messaggio").innerHTML = "LIVELLO " + livelloCorrente;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>IL LABIRINTO FATATO</h1>
+    
+    <p id="punti">
+        STELLE RACCOLTE: <span id="valStelle">0/0</span>
+    </p>
+
+    <table id="layout-table">
+        <tr>
+            <td style="vertical-align: top;">
+                <table id="griglia"></table>
+            </td>
+            <td style="vertical-align: top; text-align: center;"> 
+                <p id="boxPunteggio">PUNTI: 0</p>
+                <p id="messaggio">
+                    CARICA LE MAPPE PER INIZIARE IL GIOCO <br>
+                    SE HAI DATI SALVATI, CARICA ANCHE QUELLI <br>
+                    ALTRIMENTI INIZIA UNA NUOVA PARTITA
+                </p>
+                <p id="infoAiuto" style="display:none; color: #b9f6ca; font-weight: bold;
+                      background-color: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px; font-size: 10px;"></p> <table id="pannello"> <tr>
+                        <td>
+                            <div id="boxCaricamentoMappe"> <span class="label-istruzioni" style="font-weight:bold; color:green;">CARICA IL FILE MAPPE.XML</span>
+                                <input type="file" id="fileMappeInput">
+                                <button onclick="caricaMappeDaXML()" class="btn-carica">CARICA MAPPE</button>
+                                <hr style="border-color: #7b1fa2;">
+                            </div>
+                            
+                            <button id="btnNuovaPartita" onclick="iniziaPartita()" style="display:none;">NUOVA PARTITA</button>
+                            
+                            <button id="btnPausa" onclick="gestisciPausa()" style="display:none;">PAUSA</button>
+                            
+                            <div id="areaSalvataggio" class="nascosto"> <hr style="border-color: #7b1fa2;">
+                                <span class="label-istruzioni">PER SALVARE PREMI, COPIA E INCOLLA NEL BLOCCO NOTE</span>
+                                <span class="label-istruzioni">E RICORDA DI SALVARE IL FILE IN FORMATO XML!</span>
+                                <button onclick="salvaDati()">SALVA DATI</button>
+                                <input type="text" id="txtXML" placeholder="Il codice XML apparirà qui...">
+                            </div>
+                            <br>
+                            <div id="boxCaricamentoDati"> <span class="label-istruzioni" style="font-weight:bold; color:green;">CARICA I TUOI DATI SALVATI:</span>
+                                <input type="file" id="fileInput">
+                                <button onclick="caricaDati()">CONTINUA LA TUA PARTITA</button>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+                <br>
+                <table id="pannello-storia"> <tr>
+                        <td>
+                            <span class="label-istruzioni" style="font-weight:bold; color: #ff4081;">CLICCA SUL PULSANTE PER SCOPRIRE LA LORE DEL GIOCO:</span>
+                            <button class="btn-storia" onclick="location.href='storia.html'">LEGGI LA STORIA</button>
+                        </td>
+                    </tr>
+                </table>
+                <br>
+                <table id="pannello-avviso"> <tr><td style="border:none;"><b style="color:#ff4081;">ATTENZIONE!</b><hr style="border-color: #7b1fa2;"></td></tr>
+                    <tr><td style="border:none; line-height: 1.8;">LA STREGA NERA TI INSEGUE!<br>RACCOGLI TUTTE LE STELLE!</td></tr>
+                </table>
+                <br>
+                <table id="pannello-comandi"> <tr><td style="border:none;"><b style="color:#e1bee7;">COMANDI</b><hr style="border-color: #7b1fa2;"></td></tr>
+                    <tr><td style="border:none; line-height: 1.8;"><b style="color:#b9f6ca;">FATA:</b> FRECCE<br><b style="color:#fff176;">STREGA B:</b> W-A-S-D</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
